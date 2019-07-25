@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.cn.aac.entity.BaseEntity;
 import com.dyuproject.protostuff.LinkedBuffer;
 import com.dyuproject.protostuff.ProtostuffIOUtil;
 import com.dyuproject.protostuff.runtime.RuntimeSchema;
@@ -2329,7 +2328,7 @@ public class RedisUtil {
      * @return
      * 对象需实现Serializable接口
      */
-    public static <T extends BaseEntity> byte[] ObjTOSerialize(Class<T> C, T object) {
+    public static <T> byte[] ObjTOSerialize(Class<T> C, T object) {
         try {
             RuntimeSchema<T> schema = RuntimeSchema.createFrom(C);
             
@@ -2346,7 +2345,7 @@ public class RedisUtil {
      * @return
      * 对象需实现Serializable接口
      */
-    public static <T extends BaseEntity> T unserialize(Class<T> C, byte[] bytes) {
+    public static <T> T unserialize(Class<T> C, byte[] bytes) {
         try {
             RuntimeSchema<T> schema = RuntimeSchema.createFrom(C);
             

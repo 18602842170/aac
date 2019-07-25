@@ -10,9 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 import com.cn.aac.entity.Seckill;
 import com.cn.aac.service.SeckillService;
 import com.cn.aac.utils.RedisUtil;
-import com.dyuproject.protostuff.LinkedBuffer;
-import com.dyuproject.protostuff.ProtostuffIOUtil;
-import com.dyuproject.protostuff.runtime.RuntimeSchema;
 
 @RestController
 @RequestMapping("/seckill")
@@ -54,69 +51,71 @@ public class SeckillController {
         return "down";
     }
     
+    /**
+     * 查询并发测试。redis查询
+     * @return
+     */
     @RequestMapping("/index3")
     public Object index3() {
-        
-        RuntimeSchema<String> schema = RuntimeSchema.createFrom(String.class);
-        Seckill s = seckillService.getById(1000);
-        byte[] key = ProtostuffIOUtil.toByteArray(s.getName(), schema, LinkedBuffer.allocate(LinkedBuffer.DEFAULT_BUFFER_SIZE));
-        byte[] value = RedisUtil.ObjTOSerialize(Seckill.class, s);
-        // 插入缓存
-        redisUtil.setnx(key, value);
-        
-        Long start = System.currentTimeMillis();
-        for (int i = 0; i < 1000000; i++) {
-            int index = i;
-            fixedThreadPool.execute(new Runnable() {
-                @Override
-                public void run() {
-                    byte[] rs = redisUtil.get(key, 0);
-                    System.out.println(RedisUtil.unserialize(Seckill.class, rs));
-                    System.out.println("第" + index + "此执行线程：" + (System.currentTimeMillis() - start));
-                }
-            });
+        Seckill s;
+        byte[] key = RedisUtil.ObjTOSerialize(String.class, "1000元秒杀iphone6");
+        byte[] rs = redisUtil.get(key, 0);
+        s = RedisUtil.unserialize(Seckill.class, rs);
+        if (s == null) {
+            s = seckillService.getById(1000);
+            byte[] value = RedisUtil.ObjTOSerialize(Seckill.class, s);
+            // 插入缓存
+            redisUtil.setnx(key, value);
         }
-        return "down";
-    }
-    
-    @RequestMapping("/index4")
-    public Object index4() {
-        Long start = System.currentTimeMillis();
-        // 从DB取1000次数据
-        for (int i = 0; i < 1000000; i++) {
-            int index = i;
-            fixedThreadPool.execute(new Runnable() {
-                @Override
-                public void run() {
-                    Seckill s = seckillService.getById(1000);
-                    System.out.println(s);
-                    System.out.println("第" + index + "此执行线程：" + (System.currentTimeMillis() - start));
-                }
-            });
-        }
-        return "down";
+        System.out.println(s);
+        return s;
     }
     
     /**
-     * 事物并发测试 1W次
+     * 查询并发测试。数据库查询
+     * @return
+     */
+    @RequestMapping("/index4")
+    public Object index4() {
+        Seckill s = seckillService.getById(1000);
+        System.out.println(s);
+        return s;
+    }
+    
+    /**
+     * 事物并发测试 
      * 当数据库等待时间过长时，会造成链接超时，
-     * 多次测试10000次修改。时间80S。失败400次左右
+     * 多次测试1000次。时间11S左右。88.4/s
      */
     @RequestMapping("/index5")
     public Object index5() {
-        Long start = System.currentTimeMillis();
-        for (int i = 0; i < 10000; i++) {
-            int index = i;
-            fixedThreadPool.execute(new Runnable() {
-                @Override
-                public void run() {
-                    seckillService.doSeckill(1000L);
-                    System.out.println("第" + index + "此执行线程：" + (System.currentTimeMillis() - start));
-                }
-            });
-        }
-        
-        return "down";
+        return seckillService.doSeckill();
     }
     
+    /**
+     * 异步并发设置库存
+     * @return
+     */
+    @RequestMapping("/index6/setNumber")
+    public Object index6SetNumber() {
+        return seckillService.setNumber();
+    }
+    
+    /**
+     * 异步并发
+     * @return
+     */
+    @RequestMapping("/index6")
+    public Object index6() {
+        return seckillService.doSeckillByRedis();
+    }
+    
+    /**
+     * 异步并发，秒杀结束
+     * @return
+     */
+    @RequestMapping("/index6/over")
+    public Object index6over() {
+        return seckillService.over();
+    }
 }

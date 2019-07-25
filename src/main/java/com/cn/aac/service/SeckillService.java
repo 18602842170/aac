@@ -2,6 +2,8 @@ package com.cn.aac.service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +23,6 @@ import com.cn.aac.exception.RepeatKillException;
 import com.cn.aac.exception.SeckillCloseException;
 import com.cn.aac.exception.SeckillException;
 import com.cn.aac.utils.RedisUtil;
-import com.dyuproject.protostuff.LinkedBuffer;
-import com.dyuproject.protostuff.ProtostuffIOUtil;
-import com.dyuproject.protostuff.runtime.RuntimeSchema;
 
 //@Componet @Service @Dao @Controller
 @Service
@@ -46,6 +45,20 @@ public class SeckillService {
     
     // md5盐值字符串，用于混淆MD5
     private final static String slat = "skdfjksjdf7787%^%^%^FSKJFK*(&&%^%&^8DF8^%^^*7hFJDHFJ";
+    
+    private static ExecutorService cachedThreadPool = Executors.newCachedThreadPool();
+    
+    public Thread t = new Thread(() -> {
+        System.out.println("In Java8, Lambda expression rocks !!");
+    });
+    
+    public Thread t2 = new Thread(new Runnable() {
+        
+        @Override
+        public void run() {
+            System.out.println("In Java8, Lambda expression rocks !!");
+        }
+    });
     
     public List<Seckill> getSeckillList() {
         return seckillDao.queryAll(0, 4);
@@ -99,25 +112,103 @@ public class SeckillService {
     }
     
     @Transactional
-    public void doSeckill(Long seckillId) {
-        //先从缓存中取得数据
-        RuntimeSchema<Long> schema = RuntimeSchema.createFrom(Long.class);
-        byte[] key = ProtostuffIOUtil.toByteArray(seckillId, schema, LinkedBuffer.allocate(LinkedBuffer.DEFAULT_BUFFER_SIZE));
+    public String doSeckill() {
+        Seckill s;
+        byte[] key = RedisUtil.ObjTOSerialize(String.class, "1000元秒杀iphone6");
         byte[] rs = redisUtil.get(key, 0);
-        Seckill s = null;
-        if (rs == null) {
-            // 没有就从数据库找然后插进缓存
+        s = RedisUtil.unserialize(Seckill.class, rs);
+        if (s == null) {
             s = seckillDao.queryById(1000);
             byte[] value = RedisUtil.ObjTOSerialize(Seckill.class, s);
+            // 插入缓存
             redisUtil.setnx(key, value);
-        } else {
-            // 有就直接用缓存
-            s = seckillDao.queryById(1000);
         }
+        String message = "";
+        // 生成随机电话
+        long number = (long) (1 + Math.random() * (18602842171L));
         // 记录购买行为
-        int insertCount = successKilledDao.insertSuccessKilled(seckillId, 18602842171L);
+        int insertCount = successKilledDao.insertSuccessKilled(1000, number);
+        message += insertCount > 0 ? "记录生成成功，" : "记录生成失败";
         // 减少库存
-        int updateCount = seckillDao.reduceNumber(seckillId, new Date());
+        int updateCount = seckillDao.reduceNumber(1000, new Date());
+        message += updateCount > 0 ? "库存扣除成功，" : "库存扣除失败";
+        
+        return message;
+    }
+    
+    public String setNumber() {
+        String key = "1000元秒杀iphone6库存";
+        Seckill s = seckillDao.queryById(1000);
+        String number = "" + s.getNumber();
+        //         插入缓存
+        redisUtil.set(key, number, 0);
+        String key2 = "1000元秒杀iphone6数量";
+        redisUtil.set(key2, "0", 0);
+        return "库存初始化成功";
+    }
+    
+    /**
+     * 先从redis中检验库存。然后减少Redis的库存
+     * @return
+     */
+    public String doSeckillByRedis() {
+        String key = "1000元秒杀iphone6库存";
+        String numstr = redisUtil.get(key, 0);
+        int number = Integer.parseInt(numstr == null ? "0" : numstr);
+        String message = "";
+        
+        String key2 = "1000元秒杀iphone6数量";
+        // 拿到数据后减少库存
+        if (number >= 0) {
+            // 缓存中减少库存
+            redisUtil.decrBy(key, 1L);
+            String numstr2 = redisUtil.get(key, 0);
+            int number2 = Integer.parseInt(numstr2 == null ? "0" : numstr2);
+            if (number2 < 0) {
+                redisUtil.decrBy(key, -1L);
+                message += "秒杀结束";
+            } else {
+                message += "库存减少成功,";
+                redisUtil.decrBy(key2, -1L);
+                insterRecod();
+            }
+        } else {
+            message += "秒杀结束";
+        }
+        return message;
+    }
+    
+    /**
+     * 使用异步线程插入购买记录
+     * 当分布式处理时。此处可采用消息队列处理
+     */
+    public void insterRecod() {
+        cachedThreadPool.execute(() -> {
+            // 生成随机电话
+            long number = (long) (1 + Math.random() * (18602842171L));
+            try {
+                // 记录购买行为
+                int insertCount = successKilledDao.insertSuccessKilled(1000, number);
+            } catch (Exception e) {
+                insterRecod();
+            }
+        });
+    }
+    
+    /**
+     * 修改库存
+     * @return
+     */
+    public String over() {
+        String key = "1000元秒杀iphone6库存";
+        String number = redisUtil.get(key, 0);
+        System.out.println(number);
+        String key2 = "1000元秒杀iphone6数量";
+        String number2 = redisUtil.get(key2, 0);
+        System.out.println(number2);
+        // 库存为0时，修改表
+        int updateCount = seckillDao.reduceNumber(1000, new Date());
+        return "库存更新完成:" + updateCount;
     }
     
     @Transactional
