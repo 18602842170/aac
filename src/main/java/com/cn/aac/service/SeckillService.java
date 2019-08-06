@@ -2,8 +2,6 @@ package com.cn.aac.service;
 
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +20,7 @@ import com.cn.aac.enums.SeckillStateEnum;
 import com.cn.aac.exception.RepeatKillException;
 import com.cn.aac.exception.SeckillCloseException;
 import com.cn.aac.exception.SeckillException;
+import com.cn.aac.singo.ThreadPoolUtils;
 import com.cn.aac.utils.RedisUtil;
 
 //@Componet @Service @Dao @Controller
@@ -37,28 +36,11 @@ public class SeckillService {
     @Autowired
     private SuccessKilledDao successKilledDao;
     
-    //    @Autowired
-    //    private RedisDao redisDao;
-    
     @Autowired
     RedisUtil redisUtil;
     
     // md5盐值字符串，用于混淆MD5
     private final static String slat = "skdfjksjdf7787%^%^%^FSKJFK*(&&%^%&^8DF8^%^^*7hFJDHFJ";
-    
-    private static ExecutorService cachedThreadPool = Executors.newCachedThreadPool();
-    
-    public Thread t = new Thread(() -> {
-        System.out.println("In Java8, Lambda expression rocks !!");
-    });
-    
-    public Thread t2 = new Thread(new Runnable() {
-        
-        @Override
-        public void run() {
-            System.out.println("In Java8, Lambda expression rocks !!");
-        }
-    });
     
     public List<Seckill> getSeckillList() {
         return seckillDao.queryAll(0, 4);
@@ -183,7 +165,7 @@ public class SeckillService {
      * 当分布式处理时。此处可采用消息队列处理
      */
     public void insterRecod() {
-        cachedThreadPool.execute(() -> {
+        ThreadPoolUtils.getInstance().getThreadPool().execute(() -> {
             // 生成随机电话
             long number = (long) (1 + Math.random() * (18602842171L));
             try {
