@@ -51,7 +51,6 @@ public class AccTimerTask extends TimerRunTime {
                 this.runSuccessCount++;
             }
         } finally {
-            // 执行完成后,无论正确与否,重新计算下次时间
         }
     }
     

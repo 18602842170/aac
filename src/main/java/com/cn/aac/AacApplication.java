@@ -14,7 +14,7 @@ public class AacApplication {
     public static void main(String[] args) {
         SpringApplication.run(AacApplication.class, args);
         // 放入定时任务进任务管理器
-        TimerRunTime runTime = new TimerRunTime(2019, 8, 6, 0, 0, 0);
+        TimerRunTime runTime = new TimerRunTime(2019, 8, 7, 0, 0, 0);
         TimerManager.getInstance().starAccTimerTask("com.cn.aac.singo.job1", runTime);
         // 启动定时任务调度器
         TimerManager.getInstance().RunTimerManager();

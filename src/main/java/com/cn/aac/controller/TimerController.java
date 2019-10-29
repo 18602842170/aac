@@ -1,7 +1,12 @@
 package com.cn.aac.controller;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.cn.aac.singo.AccTimerTask;
@@ -15,10 +20,10 @@ public class TimerController {
     @RequestMapping("/index")
     public Object index() {
         // 放入定时任务进任务管理器
-        TimerRunTime runTime = new TimerRunTime(2019, 8, 6, 0, 16, 35);
+        TimerRunTime runTime = new TimerRunTime(2019, 8, 7, 0, 0, 0);
         TimerManager.getInstance().starAccTimerTask("com.cn.aac.singo.job2", runTime);
         // 放入定时任务进任务管理器
-        TimerRunTime runTime2 = new TimerRunTime(2019, 8, 6, 2, 16, 0);
+        TimerRunTime runTime2 = new TimerRunTime(2019, 8, 7, 0, 0, 5);
         TimerManager.getInstance().starAccTimerTask("com.cn.aac.singo.job2", runTime2);
         return "down";
     }
@@ -51,6 +56,20 @@ public class TimerController {
     public Boolean taskRunnuer(AccTimerTask runtask) {
         //        System.out.println("任务：" + runtask.getTaskID() + "执行了：" + runtask.getRuntimeCount() + "次");
         return true;
+    }
+    
+    /**
+     * 未登录，shiro应重定向到登录界面，此处返回未登录状态信息由前端控制跳转页面
+     * 
+     * @return
+     */
+    @PostMapping(value = "/testpost")
+    @ResponseBody
+    public Object testpost() {
+        Map<String, Object> map = new HashMap<String, Object>();
+        map.put("code", "1000000");
+        map.put("msg", "未登录");
+        return map;
     }
     
 }
